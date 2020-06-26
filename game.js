@@ -10,7 +10,7 @@ const CONFIG = {
   floorBounceMinY: 1, // minimum vY to apply bounce (otherwise, stop)
 
   floorY: 400, // Y value of the floor
-  ballRadius: 30, // size of the balls
+  ballHeight: 50, // size of the balls
 }
 
 function initGame() {
@@ -51,7 +51,7 @@ class Ball extends PIXI.Graphics {
 
   baseScale;
 
-  cfloorY = CONFIG.floorY + 20; // the floor in relation to this ball.  This way can adjust up and down as moves
+  cfloorY = CONFIG.floorY; // the floor in relation to this ball.  This way can adjust up and down as moves
 
   dragging = false; // dragging with mouse or not?
   mousePos; // what's the last known mouse position?
@@ -66,7 +66,7 @@ class Ball extends PIXI.Graphics {
     super();
 
     this.display = PIXI.Sprite.from("guinea pig");
-    this.display.height = CONFIG.ballRadius;
+    this.display.height = CONFIG.ballHeight;
     this.display.scale.x = this.display.scale.y;
     this.display.tint = color;
 
@@ -141,19 +141,19 @@ class Ball extends PIXI.Graphics {
     }
 
     // collision check
-    if (this.x - CONFIG.ballRadius < 0) {
-      this.x = CONFIG.ballRadius;
+    if (this.x - this.display.width / 2 < 0) {
+      this.x = this.display.width / 2;
       this.vX = 0
-    } else if (this.x + CONFIG.ballRadius > appRect.right) {
-      this.x = appRect.right - CONFIG.ballRadius;
+    } else if (this.x + this.display.width / 2 > appRect.right) {
+      this.x = appRect.right - this.display.width / 2;
       this.vX = 0
     }
 
-    if (this.y - CONFIG.ballRadius < 0) {
-      this.y = CONFIG.ballRadius;
+    if (this.y - this.display.height / 2 < 0) {
+      this.y = this.display.height / 2;
       this.vY = 0;
-    } else if (this.y + CONFIG.ballRadius > this.cfloorY) {
-      this.y = this.cfloorY - CONFIG.ballRadius;
+    } else if (this.y + this.display.height / 2 > this.cfloorY) {
+      this.y = this.cfloorY - this.display.height / 2;
       this.vY = 0;
     }
   }
@@ -166,10 +166,10 @@ class Ball extends PIXI.Graphics {
     this.y += this.vY;
 
     // floor collision check
-    if (this.y + CONFIG.ballRadius > this.cfloorY) {
+    if (this.y + this.display.height / 2 > this.cfloorY) {
       this.vX *= CONFIG.friction;
 
-      this.y = this.cfloorY - CONFIG.ballRadius;
+      this.y = this.cfloorY - this.display.height / 2;
 
       if (this.vY > CONFIG.floorBounceMinY) {
         this.vY = -this.vY * CONFIG.bounce;
@@ -179,11 +179,11 @@ class Ball extends PIXI.Graphics {
     }
 
     // wall collision check
-    if (this.x - CONFIG.ballRadius < 0) {
-      this.x = CONFIG.ballRadius;
+    if (this.x - this.display.width / 2 < 0) {
+      this.x = this.display.width / 2;
       this.vX *= -CONFIG.bounce;
-    } else if (this.x + CONFIG.ballRadius > appRect.right) {
-      this.x = appRect.right - CONFIG.ballRadius;
+    } else if (this.x + this.display.width / 2 > appRect.right) {
+      this.x = appRect.right - this.display.width / 2;
       this.vX *= -CONFIG.bounce;
     }
   }
