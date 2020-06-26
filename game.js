@@ -27,9 +27,11 @@ function initGame() {
   app.stage.addChild(back, floor);
 
   //create 3x Balls
-  addBall(0xffcc00);
-  addBall(0x00ffcc);
-  addBall(0xcc00ff);
+  textureCache.addTexturePromise("guinea pig", "./assets/guinea-pig.png").then(() => {
+    addBall(0xffffdd);
+    addBall(0xddffff);
+    addBall(0xffddff);
+  })
 }
 
 function addBall(color) {
@@ -47,7 +49,9 @@ class Ball extends PIXI.Graphics {
   vX = 0; // velocities
   vY = 0;
 
-  cfloorY = CONFIG.floorY; // the floor in relation to this ball.  This way can adjust up and down as moves
+  baseScale;
+
+  cfloorY = CONFIG.floorY + 20; // the floor in relation to this ball.  This way can adjust up and down as moves
 
   dragging = false; // dragging with mouse or not?
   mousePos; // what's the last known mouse position?
@@ -61,10 +65,16 @@ class Ball extends PIXI.Graphics {
   constructor(color) {
     super();
 
-    this.display = new PIXI.Graphics();
-    this.display.beginFill(color).lineStyle(1).drawCircle(0, 0, CONFIG.ballRadius);
+    this.display = PIXI.Sprite.from("guinea pig");
+    this.display.height = CONFIG.ballRadius;
+    this.display.scale.x = this.display.scale.y;
+    this.display.tint = color;
+
+    this.baseScale = 1; //this.display.scale.y;
+
     this.display.buttonMode = true;
     this.display.interactive = true;
+    this.display.anchor.set(0.5);
     this.addChild(this.display);
 
     // super cheap and dirty mouse listeners
@@ -106,12 +116,15 @@ class Ball extends PIXI.Graphics {
     let direction = Math.atan2(this.vY, this.vX);
     let mag = Math.sqrt(this.vY * this.vY + this.vX * this.vX);
 
-    this.propertiesTo.scaleX = 1 + mag * CONFIG.vScaleX;
-    this.propertiesTo.scaleY = 1 + mag * CONFIG.vScaleY;
+    // this.display.skew.x = this.vX * 0.03;
+    // this.display.skew.y = this.vY * 0.03;
+    this.propertiesTo.scaleX = this.baseScale * (1 + mag * CONFIG.vScaleX);
+    this.propertiesTo.scaleY = this.baseScale * (1 + mag * CONFIG.vScaleY);
 
-    this.display.rotation = direction;
-    this.display.scale.x += (this.propertiesTo.scaleX - this.display.scale.x) * mult;
-    this.display.scale.y += (this.propertiesTo.scaleY - this.display.scale.y) * mult;
+    this.display.rotation = -direction;
+    this.rotation = direction;
+    this.scale.x += (this.propertiesTo.scaleX - this.scale.x) * mult;
+    this.scale.y += (this.propertiesTo.scaleY - this.scale.y) * mult;
   }
 
   updateDragging() {
