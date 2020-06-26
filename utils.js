@@ -18,7 +18,7 @@ let textureCache = new class TextureCache {
       if (loader.resources[id]) {
         resolve();
       } else {
-        loader.add(id, url);
+        loader.add(id, url, {crossOrigin: true});
         loader.load((loader, res) => {
           this._cache[id] = res[id].texture;
           resolve();
@@ -35,7 +35,7 @@ let textureCache = new class TextureCache {
       let loader = new PIXI.Loader;
       idUrlPairs.forEach(([id, url]) => {
         if (!loader.resources[id]) {
-          loader.add(id, url);
+          loader.add(id, url, {crossOrigin: true});
         }
       });
 
