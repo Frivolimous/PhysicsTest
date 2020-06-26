@@ -3,10 +3,11 @@
 <html>
   <script src="PIXI.js"></script>
 
-  <body>
-
-    <div id="game-canvas"></div>
-    
+  <body style="margin: 0px; overflow:hidden;">
+    <div style="position: fixed; width: 100%; height: 100%;">
+      <div id="game-canvas" style="width: 100%; height: 80%;"></div>
+      <input id="file-input" type="file" name="name">
+    </div>
   </body>
   
   <script src="utils.js"></script>

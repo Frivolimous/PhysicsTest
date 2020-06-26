@@ -1,5 +1,6 @@
 
 //== Main Initialization ==\\
+let element = document.getElementById('game-canvas');
 
 let appRect = new PIXI.Rectangle(0, 0, 800, 500);
 var app = new PIXI.Application({
@@ -9,15 +10,22 @@ var app = new PIXI.Application({
   width: appRect.width,
   height: appRect.height,
 });
-document.getElementById("game-canvas").append(app.view);
+element.append(app.view);
 
 //== Initialize Supporting Structures ==\\
 
 app.stage.interactive=true;
 
-let text = new PIXI.Text("HELLO WORLD");
-app.stage.addChild(text);
+let resizeCallbacks = [];
+let finishResize = debounce(300, () => {
+  this.app.view.width = appRect.width = element.offsetWidth;
+  this.app.view.height = appRect.height = element.offsetHeight;
 
-window.text = text;
-  
+  resizeCallbacks.forEach(callback => callback());
+});
+
+finishResize(true);
+
+window.addEventListener('resize', () => finishResize());
+
 initGame();

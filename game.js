@@ -1,3 +1,23 @@
+let updateImageReg = [];
+window.updateImages = (url) => {
+  textureCache.addTexturePromise("guinea pig", url).then(() => {
+    updateImageReg.forEach(callback => callback());
+  });
+}
+
+document.getElementById("file-input").addEventListener("input", (e) => {
+  let file = e.target.files[0];
+  console.log(file);
+  
+  var reader = new FileReader();
+   reader.readAsDataURL(file);
+
+   reader.onload = readerEvent => {
+      var content = readerEvent.target.result;
+      updateImages(content);
+   }
+});
+
 const CONFIG = {
   vScaleX: 0.02, // scale warp factor
   vScaleY: -0.01, // scale warp factor
@@ -9,7 +29,7 @@ const CONFIG = {
   bounce: 0.4, // velocity mult when bouncing off wall or floor
   floorBounceMinY: 1, // minimum vY to apply bounce (otherwise, stop)
 
-  floorY: 400, // Y value of the floor
+  floorHeight: 100, // Y value of the floor
   ballHeight: 50, // size of the balls
 }
 
@@ -21,16 +41,24 @@ function initGame() {
 
   // create grass
   let floor = new PIXI.Graphics();
-  floor.beginFill(0x00ff00).lineStyle(1).drawRect(0, 0, appRect.width, (appRect.height - CONFIG.floorY));
-  floor.y = CONFIG.floorY;
+  floor.beginFill(0x00ff00).lineStyle(1).drawRect(0, 0, appRect.width, CONFIG.floorHeight);
+  floor.y = appRect.height - CONFIG.floorHeight;
 
   app.stage.addChild(back, floor);
 
   //create 3x Balls
+
+  let balls = [];
   textureCache.addTexturePromise("guinea pig", "./assets/guinea-pig.png").then(() => {
-    addBall(0xffffdd);
-    addBall(0xddffff);
-    addBall(0xffddff);
+    balls.push(addBall(0xffffdd));
+    balls.push(addBall(0xddffff));
+    balls.push(addBall(0xffddff));
+  });
+
+  resizeCallbacks.push(() => {
+    back.clear().beginFill(0x00ccff).drawRect(0, 0, appRect.width, appRect.height);
+    floor.beginFill(0x00ff00).lineStyle(1).drawRect(0, 0, appRect.width, CONFIG.floorHeight);
+    floor.y = appRect.height - CONFIG.floorHeight;
   })
 }
 
@@ -41,17 +69,20 @@ function addBall(color) {
   app.stage.addChild(ball);
 
   app.ticker.add(ball.update);
+
+  return ball;
 }
 
 class Ball extends PIXI.Graphics {
   display; // graphic that is shown
+  _Tint;
 
   vX = 0; // velocities
   vY = 0;
 
   baseScale;
 
-  cfloorY = CONFIG.floorY; // the floor in relation to this ball.  This way can adjust up and down as moves
+  cfloorHeight = CONFIG.floorHeight; // the floor in relation to this ball.  This way can adjust up and down as moves
 
   dragging = false; // dragging with mouse or not?
   mousePos; // what's the last known mouse position?
@@ -65,12 +96,23 @@ class Ball extends PIXI.Graphics {
   constructor(color) {
     super();
 
-    this.display = PIXI.Sprite.from("guinea pig");
-    this.display.height = CONFIG.ballHeight;
-    this.display.scale.x = this.display.scale.y;
-    this.display.tint = color;
+    this._Tint = color;
 
     this.baseScale = 1; //this.display.scale.y;
+
+    this.updateImage();
+    updateImageReg.push(this.updateImage);
+  }
+
+  updateImage = () => {
+    if (this.display) {
+      this.display.destroy();
+    }
+    
+    this.display = new PIXI.Sprite(textureCache.getTexture("guinea pig"));
+    this.display.height = CONFIG.ballHeight;
+    this.display.scale.x = this.display.scale.y;
+    this.display.tint = this._Tint;
 
     this.display.buttonMode = true;
     this.display.interactive = true;
@@ -152,8 +194,8 @@ class Ball extends PIXI.Graphics {
     if (this.y - this.display.height / 2 < 0) {
       this.y = this.display.height / 2;
       this.vY = 0;
-    } else if (this.y + this.display.height / 2 > this.cfloorY) {
-      this.y = this.cfloorY - this.display.height / 2;
+    } else if (this.y + this.display.height / 2 > appRect.height - this.cfloorHeight) {
+      this.y = appRect.height - this.cfloorHeight - this.display.height / 2;
       this.vY = 0;
     }
   }
@@ -166,10 +208,10 @@ class Ball extends PIXI.Graphics {
     this.y += this.vY;
 
     // floor collision check
-    if (this.y + this.display.height / 2 > this.cfloorY) {
+    if (this.y + this.display.height / 2 > appRect.height - this.cfloorHeight) {
       this.vX *= CONFIG.friction;
 
-      this.y = this.cfloorY - this.display.height / 2;
+      this.y = appRect.height - this.cfloorHeight - this.display.height / 2;
 
       if (this.vY > CONFIG.floorBounceMinY) {
         this.vY = -this.vY * CONFIG.bounce;

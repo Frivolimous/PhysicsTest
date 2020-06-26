@@ -11,11 +11,11 @@ let textureCache = new class TextureCache {
     return m;
   }
 
-  addTexturePromise = (id, url) => {
+  addTexturePromise = (id, url, overwrite = false) => {
     return new Promise((resolve) => {
       let loader = new PIXI.Loader;
       
-      if (loader.resources[id]) {
+      if (!overwrite && loader.resources[id]) {
         resolve();
       } else {
         loader.add(id, url, {crossOrigin: true});
@@ -67,5 +67,24 @@ let textureCache = new class TextureCache {
 
   destroy() {
     PIXI.utils.clearTextureCache();
+  }
+}
+
+function debounce(ms, callback) {
+  let timeout;
+  let later = () => {
+    console.log("A");
+    timeout = null;
+    callback();
+  }
+
+  return (now = false) => {
+    clearTimeout(timeout);
+
+    if (now) {
+      later();
+    } else {
+      timeout = setTimeout(later, ms);
+    }
   }
 }
