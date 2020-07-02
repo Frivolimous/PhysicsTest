@@ -31,7 +31,11 @@ const CONFIG = {
 
   floorHeight: 100, // Y value of the floor
   ballHeight: 50, // size of the balls
+
+  online: true,
 }
+
+let balls = [];
 
 function initGame() {
   // create background
@@ -47,12 +51,8 @@ function initGame() {
   app.stage.addChild(back, floor);
 
   //create 3x Balls
-
-  let balls = [];
   textureCache.addTexturePromise("guinea pig", "./assets/guinea-pig.png").then(() => {
-    balls.push(addBall(0xffffdd));
-    balls.push(addBall(0xddffff));
-    balls.push(addBall(0xffddff));
+    registerUser();
   });
 
   resizeCallbacks.push(() => {
@@ -62,8 +62,30 @@ function initGame() {
   })
 }
 
-function addBall(color) {
-  ball = new Ball(color);
+let registerUser = () => {
+  if (CONFIG.online) {
+    dbRegister().then(() => {
+      balls.push(addBall(0xffddff, true, dbPostObjectAction));
+
+      dbFetchObjects().then(objects => {
+        objects.forEach(obj => {
+          let ball = addBall(0xffffff);
+          ball.applyData(obj);
+          balls.push(ball);
+          dbRegisterObject(obj, ball.applyData);
+        })
+        // console.log('objects', objects);
+      })
+    });
+  } else {
+    balls.push(addBall(0xffffdd, true));
+      balls.push(addBall(0xddffff, true));
+      balls.push(addBall(0xffddff, true));
+  }
+}
+
+function addBall(color, canControl, updateCallback) {
+  ball = new Ball(color, canControl, updateCallback);
   ball.x = 100 + Math.random() * 100;
   ball.y = 100 + Math.random() * 100;
   app.stage.addChild(ball);
@@ -76,6 +98,9 @@ function addBall(color) {
 class Ball extends PIXI.Graphics {
   display; // graphic that is shown
   _Tint;
+
+  oX;
+  oY;
 
   vX = 0; // velocities
   vY = 0;
@@ -93,10 +118,15 @@ class Ball extends PIXI.Graphics {
     scaleY: 1
   }
 
-  constructor(color) {
+  canControl;
+  updateCallback;
+
+  constructor(color, canControl = false, updateCallback) {
     super();
 
     this._Tint = color;
+    this.canControl = canControl;
+    this.updateCallback = updateCallback;
 
     this.baseScale = 1; //this.display.scale.y;
 
@@ -114,38 +144,66 @@ class Ball extends PIXI.Graphics {
     this.display.scale.x = this.display.scale.y;
     this.display.tint = this._Tint;
 
-    this.display.buttonMode = true;
-    this.display.interactive = true;
     this.display.anchor.set(0.5);
     this.addChild(this.display);
 
-    // super cheap and dirty mouse listeners
-    this.display.addListener("pointerdown",(e) => {
-      this.dragging = true;
-      this.mousePos = e.data.getLocalPosition(app.stage);
-      app.stage.addChild(this);
-    });
-  
-    app.stage.addListener("pointermove", (e) => {
-      if (this.dragging) {
+    if (this.canControl) {
+      this.display.buttonMode = true;
+      this.display.interactive = true;
+      
+      // super cheap and dirty mouse listeners
+      this.display.addListener("pointerdown",(e) => {
+        this.dragging = true;
         this.mousePos = e.data.getLocalPosition(app.stage);
-      }
-    });
-  
-    app.stage.addListener("pointerup", () => {
-      this.dragging = false;
-    });
+        app.stage.addChild(this);
+      });
 
-    app.stage.addListener("pointerupoutside", () => {
-      this.dragging = false;
-    });
+      app.stage.addListener("pointermove", (e) => {
+        if (this.dragging) {
+          this.mousePos = e.data.getLocalPosition(app.stage);
+        }
+      });
+
+      app.stage.addListener("pointerup", () => {
+        if (this.dragging) {
+          this.dragging = false;
+        }
+      });
+
+      app.stage.addListener("pointerupoutside", () => {
+        this.dragging = false;
+      });
+    }
+  }
+
+  applyData = data => {
+    this.dragging = data.dragging;
+    if (data.dragging) {
+      this.mousePos = {x: data.x, y: data.y};
+    } else {
+      this.x = data.x;
+      this.y = data.y;
+      this.vX = data.vX;
+      this.vY = data.vY;
+    }
   }
 
   update = () => {
+    this.oX = this.x;
+    this.oY = this.y;
+
     if (this.dragging) {
       this.updateDragging();
     } else {
       this.updateFree();
+    }
+
+    if (this.updateCallback && (Math.abs(this.oX - this.x) > 1 || Math.abs(this.oY - this.y) > 1)) {
+      if (this.dragging) {
+        this.updateCallback(this.mousePos.x, this.mousePos.y, this.vX, this.vY, this.dragging);
+      } else {
+        this.updateCallback(this.x, this.y, this.vX, this.vY, this.dragging);
+      }
     }
 
     this.runAnimations();

@@ -17,15 +17,15 @@ element.append(app.view);
 app.stage.interactive=true;
 
 let resizeCallbacks = [];
-let finishResize = debounce(300, () => {
-  this.app.view.width = appRect.width = element.offsetWidth;
-  this.app.view.height = appRect.height = element.offsetHeight;
+// let finishResize = debounce(300, () => {
+//   this.app.view.width = appRect.width = element.offsetWidth;
+//   this.app.view.height = appRect.height = element.offsetHeight;
 
-  resizeCallbacks.forEach(callback => callback());
-});
+//   resizeCallbacks.forEach(callback => callback());
+// });
 
-finishResize(true);
+// finishResize(true);
 
-window.addEventListener('resize', () => finishResize());
+// window.addEventListener('resize', () => finishResize());
 
 initGame();

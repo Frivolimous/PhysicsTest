@@ -73,7 +73,6 @@ let textureCache = new class TextureCache {
 function debounce(ms, callback) {
   let timeout;
   let later = () => {
-    console.log("A");
     timeout = null;
     callback();
   }
@@ -88,3 +87,22 @@ function debounce(ms, callback) {
     }
   }
 }
+
+function throttle(ms, callback) {
+  let timeout;
+  let resetTimeout = () => {
+    timeout = null;
+  }
+
+  return (...args) => {
+    if (!timeout) {
+      callback(...args);
+      timeout = setTimeout(resetTimeout, ms);
+    }
+  }
+}
+
+let throttleTest = throttle(300, (x, y) => {
+  console.log('x', x);
+  console.log('y', y);
+});

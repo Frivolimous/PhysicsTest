@@ -5,12 +5,20 @@
 
   <body style="margin: 0px; overflow:hidden;">
     <div style="position: fixed; width: 100%; height: 100%;">
-      <div id="game-canvas" style="width: 100%; height: 80%;"></div>
+      <div id="game-canvas" style="width: 800 px; height: 500 px"></div>
       <input id="file-input" type="file" name="name">
     </div>
   </body>
-  
+
+<script src="https://www.gstatic.com/firebasejs/7.15.5/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/7.15.5/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/7.15.5/firebase-auth.js"></script>
+<!-- TODO: Add SDKs for Firebase products that you want to use
+     https://firebase.google.com/docs/web/setup#available-libraries -->
   <script src="utils.js"></script>
+  <script src="fbcomm.js"></script>
+  
+  
   <script src="game.js"></script>
   <script src="initialize.js"></script>
 </html>
