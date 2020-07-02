@@ -32,7 +32,7 @@ const CONFIG = {
   floorHeight: 100, // Y value of the floor
   ballHeight: 50, // size of the balls
 
-  online: false,
+  online: true,
 }
 
 let balls = [];
@@ -65,27 +65,31 @@ function initGame() {
 let registerUser = () => {
   if (CONFIG.online) {
     dbRegister().then(() => {
-      balls.push(addBall(0xffddff, true, dbPostObjectAction));
-
+      console.log('reg');
       dbFetchObjects().then(objects => {
         objects.forEach(obj => {
-          let ball = addBall(0xffffff);
+          let ball = addBall(obj, (data, instant) => {
+            if (instant) {
+              dbPostObjectActionInstant(data);
+            } else {
+              dbPostObjectAction(data);
+            }
+          });
           ball.applyData(obj);
-          balls.push(ball);
           dbRegisterObject(obj, ball.applyData);
-        })
-        // console.log('objects', objects);
-      })
+          balls.push(ball);
+        });
+      });
     });
   } else {
-    balls.push(addBall(0xffffdd, true));
-      balls.push(addBall(0xddffff, true));
-      balls.push(addBall(0xffddff, true));
+    balls.push(addBall({tint: 0xffffdd}));
+    balls.push(addBall({tint: 0xddffff}));
+    balls.push(addBall({tint: 0xffddff}));
   }
 }
 
-function addBall(color, canControl, updateCallback) {
-  ball = new Ball(color, canControl, updateCallback);
+function addBall(data, updateCallback) {
+  ball = new Ball(data, updateCallback);
   ball.x = 100 + Math.random() * 100;
   ball.y = 100 + Math.random() * 100;
   app.stage.addChild(ball);
@@ -97,8 +101,10 @@ function addBall(color, canControl, updateCallback) {
 
 class Ball extends PIXI.Graphics {
   display; // graphic that is shown
-  _Tint;
+  grabDisplay = new PIXI.Graphics();
 
+  data;
+  
   oX;
   oY;
 
@@ -111,7 +117,6 @@ class Ball extends PIXI.Graphics {
 
   dragging = false; // dragging with mouse or not?
   mousePos; // what's the last known mouse position?
-  airborne = false; // currently airborne?
 
   propertiesTo = { // property values being adjusted to
     scaleX: 1,
@@ -120,18 +125,21 @@ class Ball extends PIXI.Graphics {
 
   canControl;
   updateCallback;
+  updateOnStop = false;
 
-  constructor(color, canControl = false, updateCallback) {
+  constructor(data, updateCallback) {
     super();
 
-    this._Tint = color;
-    this.canControl = canControl;
+    this.data = data;
     this.updateCallback = updateCallback;
 
     this.baseScale = 1; //this.display.scale.y;
 
     this.updateImage();
     updateImageReg.push(this.updateImage);
+    this.grabDisplay.lineStyle(3, 0xffff00).drawCircle(0, 0, 50);
+    this.addChild(this.grabDisplay);
+    this.grabDisplay.visible = false;
   }
 
   updateImage = () => {
@@ -142,49 +150,84 @@ class Ball extends PIXI.Graphics {
     this.display = new PIXI.Sprite(textureCache.getTexture("guinea pig"));
     this.display.height = CONFIG.ballHeight;
     this.display.scale.x = this.display.scale.y;
-    this.display.tint = this._Tint;
+    this.display.tint = this.data.tint || 0xffffff;
 
     this.display.anchor.set(0.5);
     this.addChild(this.display);
 
-    if (this.canControl) {
-      this.display.buttonMode = true;
-      this.display.interactive = true;
-      
-      // super cheap and dirty mouse listeners
-      this.display.addListener("pointerdown",(e) => {
+    this.display.buttonMode = true;
+    this.display.interactive = true;
+
+    this.grabDisplay.width = this.display.width * 1.3;
+    this.grabDisplay.height = this.display.height * 1.3;
+    
+    // super cheap and dirty mouse listeners
+    this.display.addListener("pointerdown",(e) => {
+      if (this.dragging === false) {
         this.dragging = true;
         this.mousePos = e.data.getLocalPosition(app.stage);
+        this.sendData(true);  
         app.stage.addChild(this);
-      });
+      }
+    });
 
-      app.stage.addListener("pointermove", (e) => {
-        if (this.dragging) {
-          this.mousePos = e.data.getLocalPosition(app.stage);
-        }
-      });
+    app.stage.addListener("pointermove", (e) => {
+      if (this.dragging === true) {
+        this.mousePos = e.data.getLocalPosition(app.stage);
+        this.sendData();
+      }
+    });
 
-      app.stage.addListener("pointerup", () => {
-        if (this.dragging) {
-          this.dragging = false;
-        }
-      });
-
-      app.stage.addListener("pointerupoutside", () => {
+    app.stage.addListener("pointerup", () => {
+      if (this.dragging === true) {
         this.dragging = false;
-      });
-    }
+        this.sendData(true);
+        this.updateOnStop = true;
+      }
+    });
+
+    app.stage.addListener("pointerupoutside", () => {
+      if (this.dragging === true) {
+        this.dragging = false;
+        this.sendData(true);
+        this.updateOnStop = true;
+      }
+    });
   }
 
   applyData = data => {
-    this.dragging = data.dragging;
     if (data.dragging) {
       this.mousePos = {x: data.x, y: data.y};
+      this.dragging = "remote";
+      this.grabDisplay.visible = true;
+      this.updateOnStop = false;
     } else {
       this.x = data.x;
       this.y = data.y;
       this.vX = data.vX;
       this.vY = data.vY;
+      this.dragging = false;
+      this.grabDisplay.visible = false;
+    }
+  }
+
+  sendData(instant) {
+    if (this.updateCallback && (Math.abs(this.data.x - this.x) > 1 || Math.abs(this.data.x - this.y) > 1)) {
+      if (this.dragging) {
+        this.data.x = this.mousePos.x;
+        this.data.y = this.mousePos.y;
+        this.data.vX = this.vX;
+        this.data.vY = this.vY;
+        this.data.dragging = true;
+        this.updateCallback(this.data, instant);
+      } else {
+        this.data.x = this.x;
+        this.data.y = this.y;
+        this.data.vX = this.vX;
+        this.data.vY = this.vY;
+        this.data.dragging = false;
+        this.updateCallback(this.data, instant);
+      }
     }
   }
 
@@ -196,14 +239,6 @@ class Ball extends PIXI.Graphics {
       this.updateDragging();
     } else {
       this.updateFree();
-    }
-
-    if (this.updateCallback && (Math.abs(this.oX - this.x) > 1 || Math.abs(this.oY - this.y) > 1)) {
-      if (this.dragging) {
-        this.updateCallback(this.mousePos.x, this.mousePos.y, this.vX, this.vY, this.dragging);
-      } else {
-        this.updateCallback(this.x, this.y, this.vX, this.vY, this.dragging);
-      }
     }
 
     this.runAnimations();
@@ -268,13 +303,20 @@ class Ball extends PIXI.Graphics {
     // floor collision check
     if (this.y + this.display.height / 2 > appRect.height - this.cfloorHeight) {
       this.vX *= CONFIG.friction;
-
+      if (Math.abs(this.vX) < 1) {
+        this.vX = 0;
+      }
+      
       this.y = appRect.height - this.cfloorHeight - this.display.height / 2;
 
       if (this.vY > CONFIG.floorBounceMinY) {
         this.vY = -this.vY * CONFIG.bounce;
       } else {
         this.vY = 0;
+        if (this.updateOnStop && this.vX === 0) {
+          this.sendData(true);
+          this.updateOnStop = false;
+        }
       }
     }
 
