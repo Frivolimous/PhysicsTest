@@ -32,7 +32,7 @@ const CONFIG = {
   floorHeight: 100, // Y value of the floor
   ballHeight: 50, // size of the balls
 
-  online: true,
+  online: false,
 }
 
 let balls = [];
